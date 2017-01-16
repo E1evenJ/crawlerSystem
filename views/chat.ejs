@@ -1,0 +1,70 @@
+chatRoomId:<input type="text" id="chatRoomId">
+userId: <input type="text" id="userId">
+<button id="login">login</button>
+<br>
+<button id="getAll">getAll</button>
+<input type="text" id="content">
+<button id="send">send</button>
+<button id="getmessage">getmessage</button>
+<button id="Crawler">Crawler</button>
+<div>
+    <ol id="messageList">
+    </ol>
+</div>
+<script>
+    //    var mySocket = io.sails.connect();
+    io.socket.on('message', function (message) {
+        var list = document.getElementById("messageList");
+        var li = document.createElement('li');
+        li.innerText = message.messageContent;
+        list.appendChild(li);
+        console.log('Socket `' + message.content + '` joined the party!');
+    });
+
+    var loginButton = document.getElementById("login");
+    var chatRoomId;
+    var userId;
+    loginButton.addEventListener('click', function () {
+        chatRoomId = document.querySelector('#chatRoomId').value;
+        userId = document.querySelector('#userId').value;
+        io.socket.get('/ChatMessage/login', {chatRoomId: chatRoomId}, function () {
+            console.log('login success:' + chatRoomId);
+        });
+    });
+
+    var sendButton = document.getElementById("send");
+    sendButton.addEventListener('click', function () {
+        var content = document.querySelector('#content').value;
+        // And use `io.socket.get()` to send a request to the server:
+        io.socket.post('/ChatMessage/sendMessage', {
+            messageContent: content,
+            chatRoomId: chatRoomId,
+            userId: userId,
+            messageType: 'MESSAGE'
+        }, function gotResponse(data, jwRes) {
+            console.log('Server responded with status code ' + jwRes.statusCode + ' and data: ', data);
+        });
+    });
+
+    var getAllButton = document.getElementById("getAll");
+    getAllButton.addEventListener('click', function () {
+        io.socket.get('/ChatMessage/getAll', function (data, jwRes) {
+            console.log(data);
+        });
+    });
+
+    var getmessage= document.getElementById('getmessage');
+    getmessage.addEventListener('click', function () {
+        io.socket.get('/ChatMessage/deletedChatMessage', function (data, jwRes) {
+            console.log(data);
+        });
+    });
+
+    var crawler= document.getElementById('Crawler');
+    crawler.addEventListener('click', function () {
+        io.socket.get('/cambio/Crawler/search', function (data, jwRes) {
+            console.log(data);
+        });
+    });
+</script>
+
