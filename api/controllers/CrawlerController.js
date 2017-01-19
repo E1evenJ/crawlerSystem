@@ -11,25 +11,33 @@ const XinliProcess = require('../crawlerCore/xinliProcess');
 module.exports = {
     search: function (req, res) {
         const searchBean = req.body;
-        const crawlerFactory = new CrawlerFactory();
-        crawlerFactory.addProcess(new XimalayaProcess());
-        // crawlerFactory.addProcess(new LizhiProcess());
-        // crawlerFactory.addProcess(new QingtingProcess());
-        // crawlerFactory.addProcess(new XinliProcess());
+        if (searchBean.keyword == undefined || searchBean.keyword == '') {
+            res.serverError();
+        } else {
+            const crawlerFactory = new CrawlerFactory();
+            crawlerFactory.addProcess(new XimalayaProcess());
+            // crawlerFactory.addProcess(new LizhiProcess());
+            // crawlerFactory.addProcess(new QingtingProcess());
+            // crawlerFactory.addProcess(new XinliProcess());
 
-        crawlerFactory.start(searchBean.keyword).then(results => res.json({message: 'success', results: results}));
-
+            crawlerFactory.start(searchBean.keyword).then(results => res.json({message: 'success', results: results}));
+        }
     },
 
     getSoundTracks: function (req, res) {
         const searchBean = req.body;
-        const crawlerFactory = new CrawlerFactory();
-        crawlerFactory.addProcess(new XimalayaProcess());
-        // crawlerFactory.addProcess(new LizhiProcess());
-        // crawlerFactory.addProcess(new QingtingProcess());
-        // crawlerFactory.addProcess(new XinliProcess());
-        crawlerFactory.getSoundTracks(searchBean.soundId, searchBean.crawlerId).then((result)=>{
-            res.json(result);
-        });
+        if (searchBean.soundId == undefined || searchBean.soundId == ''
+            || searchBean.crawlerId == undefined || searchBean.crawlerId == '') {
+            res.serverError();
+        } else {
+            const crawlerFactory = new CrawlerFactory();
+            crawlerFactory.addProcess(new XimalayaProcess());
+            // crawlerFactory.addProcess(new LizhiProcess());
+            // crawlerFactory.addProcess(new QingtingProcess());
+            // crawlerFactory.addProcess(new XinliProcess());
+            crawlerFactory.getSoundTracks(searchBean.soundId, searchBean.crawlerId).then((result) => {
+                res.json(result);
+            });
+        }
     }
 };

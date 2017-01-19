@@ -9,13 +9,15 @@ class Crawler {
     constructor(url, callback) {
         this.nextArray = [];
         this.processCallback = callback;
-        this.isStart = true;
+        this.isStart = false;
         this.result = {
             _id: url
         };
+        this.nextArrayIndex = -1;
     }
 
     start() {
+        this.isStart = true;
         this.superagentGet();
     }
 
@@ -37,7 +39,7 @@ class Crawler {
 
     processEnd(err, sres, callBack) {
         callBack(err, sres, this.result, this);
-        if (err) {
+        if (err || this.isStart == false) {
             this.processCallback(err, this.result);
         } else {
             this.superagentGet();
@@ -45,7 +47,7 @@ class Crawler {
     }
 
     superagentGet() {
-        const currentOfArray = this.nextArray.shift();
+        const currentOfArray = this.nextArray[++this.nextArrayIndex];
         if (currentOfArray == undefined) {
             this.processCallback && this.processCallback(null, this.result);
         } else {
@@ -58,7 +60,7 @@ class Crawler {
 
     }
 
-    superAgent(url, options, callBack) {
+    superAgent(url, options, callBack, asyncCallBack) {
         const _this = this;
         superagent
             .get(url)
@@ -76,7 +78,7 @@ class Crawler {
             //
             // })
             .end(function (err, sres) {
-                _this.processEnd(err, sres, callBack);
+                _this.processEnd(err, sres, callBack, asyncCallBack);
             });
     }
 
