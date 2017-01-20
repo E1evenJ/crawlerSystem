@@ -6,19 +6,16 @@ const superagent = require('superagent');//引入superagent
 
 class Crawler {
 
-    constructor(url, callback) {
+    constructor(albumArray) {
         this.nextArray = [];
-        this.processCallback = callback;
         this.isStart = false;
-        this.result = {
-            _id: url
-        };
+        this.albumArray = albumArray;
         this.nextArrayIndex = -1;
     }
 
     start() {
         this.isStart = true;
-        this.superagentGet();
+        return this.superagentGet();
     }
 
     stop() {
@@ -37,49 +34,80 @@ class Crawler {
         }
     }
 
-    processEnd(err, sres, callBack) {
-        callBack(err, sres, this.result, this);
-        if (err || this.isStart == false) {
-            this.processCallback(err, this.result);
-        } else {
-            this.superagentGet();
-        }
-    }
-
     superagentGet() {
-        const currentOfArray = this.nextArray[++this.nextArrayIndex];
-        if (currentOfArray == undefined) {
-            this.processCallback && this.processCallback(null, this.result);
-        } else {
-            if (currentOfArray.url == undefined) {
-                this.processCallback({message: 'error'}, this.result);
+        const _this = this;
+        return new Promise((resolve, reject) => {
+            const currentOfArray = this.nextArray[++this.nextArrayIndex];
+            if (currentOfArray == null) {
+                resolve(this.albumArray);
             } else {
-                this.superAgent(currentOfArray.url, currentOfArray.options, currentOfArray.callBack);
-            }
-        }
+                if (currentOfArray.url instanceof Array) {
+                    if (currentOfArray.url.length > 0) {
+                        async.each(currentOfArray.url, function (url, asyncCallBack) {
+                            _this.superAgent(url, currentOfArray.options).then((sres) => {
+                                currentOfArray.callBack(sres, _this.albumArray, _this);
+                                asyncCallBack();
+                            }).catch((error) => {
+                                asyncCallBack();
+                                console.error(error.message);
+                            });
+                        }, function (err) {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve(_this.albumArray);
+                            }
 
+                        });
+                    } else {
+                        resolve({message: 'error'}, _this.albumArray);
+                    }
+                } else {
+                    _this.superAgent(currentOfArray.url, currentOfArray.options).then(function (sres) {
+                        currentOfArray.callBack(sres, _this.albumArray, _this);
+                        if (_this.isStart == false) {
+                            reject({message: 'crawler is stop'});
+                        } else {
+                            _this.superagentGet().then((albumArray) => {
+                                resolve(albumArray);
+                            }).catch((error) => {
+                                reject(error);
+                            });
+                        }
+                    }).catch(function (error) {
+                        reject(error);
+                    });
+                }
+            }
+        });
     }
 
-    superAgent(url, options, callBack, asyncCallBack) {
-        const _this = this;
-        superagent
-            .get(url)
-            .set(Crawler.getHttpSet(options))
-            // .set({
-            //     'Accept': (currentOfArray.options.headers && currentOfArray.options.headers['Accept']) || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            //     'Accept-Encoding': (currentOfArray.options.headers && currentOfArray.options.headers['Accept-Encoding']) || 'gzip, deflate, sdch, br',
-            //     'Accept-Language': (currentOfArray.options.headers && currentOfArray.options.headers['Accept-Language']) || 'zh-CN,zh;q=0.8,en;q=0.6',
-            //     'Cache-Control': (currentOfArray.options.headers && currentOfArray.options.headers['Cache-Control']) || 'no-cache',
-            //     'Connection': (currentOfArray.options.headers && currentOfArray.options.headers['Connection']) || 'keep-alive',
-            //     'Cookie': (currentOfArray.options.headers && currentOfArray.options.headers['Cookie']) || 'BIDUPSID=A4CA5AABC28940A8BFB4BD8356E28A1A; PSTM=1436410521; BAIDUID=A05E96DCF1B764F696A7DC4A3E16AC94:FG=1; ispeed_lsm=2; MCITY=-289%3A; BD_HOME=0; PSINO=6; H_PS_PSSID=1421_21096_18134; BD_UPN=123253; H_PS_645EC=9e63DmKJEP2ldwv6wev36lvK20ELsnKDLITXMWBc2o4XDQDw%2B6laPPZY2NA; BDSVRTM=0',
-            //     'Host': (currentOfArray.options.headers && currentOfArray.options.headers['Host']) || 'www.baidu.com',
-            //     'Pragma': (currentOfArray.options.headers && currentOfArray.options.headers['Pragma']) || 'no-cache',
-            //     'Upgrade-Insecure-Requests': (currentOfArray.options.headers && currentOfArray.options.headers['Upgrade-Insecure-Requests']) || 1
-            //
-            // })
-            .end(function (err, sres) {
-                _this.processEnd(err, sres, callBack, asyncCallBack);
-            });
+    superAgent(url, options) {
+        return new Promise((resolve, reject) => {
+            superagent
+                .get(url)
+                .set(Crawler.getHttpSet(options))
+                // .set({
+                //     'Accept': (currentOfArray.options.headers && currentOfArray.options.headers['Accept']) || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                //     'Accept-Encoding': (currentOfArray.options.headers && currentOfArray.options.headers['Accept-Encoding']) || 'gzip, deflate, sdch, br',
+                //     'Accept-Language': (currentOfArray.options.headers && currentOfArray.options.headers['Accept-Language']) || 'zh-CN,zh;q=0.8,en;q=0.6',
+                //     'Cache-Control': (currentOfArray.options.headers && currentOfArray.options.headers['Cache-Control']) || 'no-cache',
+                //     'Connection': (currentOfArray.options.headers && currentOfArray.options.headers['Connection']) || 'keep-alive',
+                //     'Cookie': (currentOfArray.options.headers && currentOfArray.options.headers['Cookie']) || 'BIDUPSID=A4CA5AABC28940A8BFB4BD8356E28A1A; PSTM=1436410521; BAIDUID=A05E96DCF1B764F696A7DC4A3E16AC94:FG=1; ispeed_lsm=2; MCITY=-289%3A; BD_HOME=0; PSINO=6; H_PS_PSSID=1421_21096_18134; BD_UPN=123253; H_PS_645EC=9e63DmKJEP2ldwv6wev36lvK20ELsnKDLITXMWBc2o4XDQDw%2B6laPPZY2NA; BDSVRTM=0',
+                //     'Host': (currentOfArray.options.headers && currentOfArray.options.headers['Host']) || 'www.baidu.com',
+                //     'Pragma': (currentOfArray.options.headers && currentOfArray.options.headers['Pragma']) || 'no-cache',
+                //     'Upgrade-Insecure-Requests': (currentOfArray.options.headers && currentOfArray.options.headers['Upgrade-Insecure-Requests']) || 1
+                //
+                // })
+                .end(function (err, sres) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(sres)
+                    }
+                });
+        });
+
     }
 
     static getHttpSet(options) {

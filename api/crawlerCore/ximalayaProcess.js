@@ -25,38 +25,30 @@ class XimalayaProcess {
     getSoundTracks(soundId) {
         return new Promise((resolve, reject) => {
             const crawler = new Crawler();
-            crawler.next(this.getSoundUrl(soundId), (err, sres, result) => {
+            crawler.next(this.getSoundUrl(soundId), (sres, result) => {
                 result.data = sres.body;
-                resolve(result.data);
             });
-            crawler.start();
+            crawler.start().then(resolve).catch(reject);
         });
 
     }
 
-    start(keyword, callback) {
-        const o = new BaiduCrawler(this.crawlerId, keyword, callback);
+    start(albumArray, keyword) {
+        const o = new BaiduCrawler(this.crawlerId, albumArray, keyword);
         let that = this;
-        o.next(function (err, sres, result, _this, asyncCallBack) {
-            if (err){
-                asyncCallBack();
-            }else{
-                if (result.albumArray == undefined) {
-                    result.albumArray = [];
-                }
-                that.filterDataFromHtml(sres, result);
-                asyncCallBack();
-            }
+        o.next((sres, albumArray) => {
+            that.filterDataFromHtml(sres, albumArray);
         });
-        o.start();
+        return o.start();
     }
 
-    filterDataFromHtml(sres, result) {
+    filterDataFromHtml(sres, albumArray) {
         const t = sres.text.replace(/[\n\r\t]/gm, '');
         const $ = cheerio.load(t);
         const targetUrl = sres.redirects[0];
         console.log(targetUrl);
         const album = {};
+        album.crawlerId = this.crawlerId;
         album.targetUrl = targetUrl;
         album.soundArray = [];
         if (isAlbum(targetUrl) && isExitTargetUrl(targetUrl, this.targetUrlArray) == false) {
@@ -65,19 +57,9 @@ class XimalayaProcess {
             album.name = $('.detailContent_title h1').text();
             album.date = $('.detailContent_category span.mgr-5').text().replace(/[^0-9\-]+/g, '');
             album.picture = $('.detailContent .albumface180 img').attr('src');
-            $('.album_soundlist li').each(function (index, item) {
-                const sound = {};
-                sound.id = $(item).attr('sound_id');
-                sound.title = $(item).find('.title').attr('title');
-                sound.playCount = $(item).find('span.sound_playcount').text();
-                sound.date = $(item).find('.operate span').text();
-                sound.isPaid = $(item).find('.iconpay').length > 0;
-                sound.isFree = $(item).find('.iconpay.tag-pay-border').length == 1;
-                sound.picture = $('.middlePlayer .pin img').attr('src');
-                album.soundArray.push(sound);
-            });
+            album.soundCount = $('.albumSoundcount').text().replace(/[^0-9]+/g, '');
             this.targetUrlArray.push(targetUrl);
-            result.albumArray.push(album);
+            albumArray.push(album);
 
         } else if (isSound(targetUrl) && isExitTargetUrl(targetUrl, this.targetUrlArray) == false) {
             album.isAlbum = false;
@@ -92,8 +74,37 @@ class XimalayaProcess {
                 album.soundArray.push(sound);
             }
             this.targetUrlArray.push(targetUrl);
-            result.albumArray.push(album);
+            albumArray.push(album);
         }
+    }
+
+    getSoundList(url) {
+        return new Promise((resolve, reject) => {
+            const crawler = new Crawler();
+            crawler.next(url, (sres, result) => {
+                const t = sres.text.replace(/[\n\r\t]/gm, '');
+                const $ = cheerio.load(t);
+                if (isAlbum(url)) {
+                    result.soundArray = [];
+                    $('.album_soundlist li').each(function (index, item) {
+                        const sound = {};
+                        sound.id = $(item).attr('sound_id');
+                        sound.title = $(item).find('.title').attr('title');
+                        sound.playCount = $(item).find('span.sound_playcount').text();
+                        sound.date = $(item).find('.operate span').text();
+                        sound.isPaid = $(item).find('.iconpay').length > 0;
+                        sound.isFree = $(item).find('.iconpay.tag-pay-border').length == 1;
+                        sound.picture = $('.middlePlayer .pin img').attr('src');
+                        result.soundArray.push(sound);
+                    });
+                    result.hasNext = $('.pagingBar_wrapper .pagingBar_page:last-child').attr('rel') == 'next';
+                    if (result.hasNext) {
+                        result.nextUrl = 'http://' + this.crawlerId + $('.pagingBar_wrapper .pagingBar_page[rel="next"]').attr('href');
+                    }
+                }
+            });
+            crawler.start().then(resolve).catch(reject);
+        });
     }
 }
 

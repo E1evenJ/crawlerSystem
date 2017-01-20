@@ -15,13 +15,18 @@ class CrawlerFactory {
     }
 
     start(keyword) {
+        const _albumArray = [];
         return new Promise((resolve, reject) => {
             async.map(this.processArray, function (process, callback) {
-                process.start(keyword, callback);
-            }, function (err, results) {
+                process.start(_albumArray, keyword).then((results) => {
+                    callback(null, results)
+                }).catch((error) => {
+                    callback(error, null);
+                });
+            }, function (err, albumArray) {
                 err && console.log('error:' + err);
-                console.log(results);
-                resolve(results);
+                console.log(_albumArray);
+                resolve(_albumArray);
             });
         });
     }
@@ -29,6 +34,11 @@ class CrawlerFactory {
     getSoundTracks(soundId, crawlerId) {
         const process = getProcess(this.processArray, crawlerId);
         return process.getSoundTracks(soundId);
+    }
+
+    getSoundList(url, crawlerId){
+        const process = getProcess(this.processArray, crawlerId);
+        return process.getSoundList(url);
     }
 }
 
